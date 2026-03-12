@@ -1514,14 +1514,14 @@
                   </div>
                 </div>
                 <div class="editor-sidebar-card">
-                  <h3>Cover Image</h3>
+                  <h3>Photos</h3>
                   <div class="img-upload-area" onclick="document.getElementById('post-img-input').click()">
-                    <div>📷 Click to upload image</div>
-                    <div style="font-size:0.75rem;margin-top:0.4rem">JPG, PNG up to 5MB</div>
+                    <div>📷 Click to add photos</div>
+                    <div style="font-size:0.75rem;margin-top:0.4rem">JPG, PNG &middot; Multiple allowed</div>
                   </div>
-                  <input type="file" id="post-img-input" accept="image/*" style="display:none"
-                    onchange="previewImage(this,'post-img-preview')">
-                  <img id="post-img-preview" class="img-preview" style="display:none">
+                  <input type="file" id="post-img-input" accept="image/*" multiple style="display:none"
+                    onchange="previewImages(this,'post-img-previews')">
+                  <div id="post-img-previews" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem"></div>
                 </div>
               </div>
             </div>
@@ -1588,14 +1588,14 @@
                   </div>
                 </div>
                 <div class="editor-sidebar-card">
-                  <h3>Cover Image</h3>
+                  <h3>Photos</h3>
                   <div class="img-upload-area" onclick="document.getElementById('proj-img-input').click()">
-                    <div>📷 Click to upload image</div>
-                    <div style="font-size:0.75rem;margin-top:0.4rem">JPG, PNG up to 5MB</div>
+                    <div>📷 Click to add photos</div>
+                    <div style="font-size:0.75rem;margin-top:0.4rem">JPG, PNG &middot; Multiple allowed</div>
                   </div>
-                  <input type="file" id="proj-img-input" accept="image/*" style="display:none"
-                    onchange="previewImage(this,'proj-img-preview')">
-                  <img id="proj-img-preview" class="img-preview" style="display:none">
+                  <input type="file" id="proj-img-input" accept="image/*" multiple style="display:none"
+                    onchange="previewImages(this,'proj-img-previews')">
+                  <div id="proj-img-previews" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem"></div>
                 </div>
               </div>
             </div>
@@ -1691,11 +1691,23 @@
     });
 
     // ─── RENDER HELPERS ───
+    function parseImages(imageJson) {
+      if (!imageJson) return [];
+      try {
+        const images = JSON.parse(imageJson);
+        return Array.isArray(images) ? images : [];
+      } catch (e) {
+        console.error("Error parsing image JSON:", e);
+        return [];
+      }
+    }
+
     function postCardHTML(post) {
+      const imgs = parseImages(post.image);
       return `
       <div class="post-card" onclick="openPost('${post.id}')" style="cursor:pointer">
         <div class="post-card-img">
-          ${post.image ? `<img src="${post.image}" alt="${post.title}">` : '📝'}
+          ${imgs[0] ? `<img src="${imgs[0]}" alt="${post.title}">` : '\u{1F4DD}'}
         </div>
         <div class="post-card-body">
           <div class="post-card-meta">
@@ -1709,11 +1721,12 @@
     }
 
     function projectCardHTML(proj) {
+      const imgs = parseImages(proj.image);
       const clickHandler = proj.link ? `onclick="window.open('${proj.link}', '_blank')"` : `onclick="openProject('${proj.id}')"`;
       return `
       <div class="project-card" ${clickHandler} style="cursor:pointer">
         <div class="project-card-img">
-          ${proj.image ? `<img src="${proj.image}" alt="${proj.title}">` : ''}
+          ${imgs[0] ? `<img src="${imgs[0]}" alt="${proj.title}">` : ''}
         </div>
         <div class="project-card-body">
           <div class="project-type">${proj.type}</div>
@@ -1731,12 +1744,13 @@
         proj = data;
       }
       if (!proj) return;
+      const projImgs = parseImages(proj.image);
       const modal = document.createElement('div');
       modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:2rem';
       modal.innerHTML = `
       <div style="background:var(--surface);border-radius:20px;max-width:560px;width:100%;padding:2rem;position:relative;max-height:80vh;overflow-y:auto">
         <button onclick="this.closest('[style*=fixed]').remove()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted)">×</button>
-        ${proj.image ? `<img src="${proj.image}" style="width:100%;border-radius:12px;margin-bottom:1.5rem;object-fit:cover;max-height:220px">` : ''}
+        ${projImgs.length > 0 ? `<div style="display:flex;gap:0.5rem;overflow-x:auto;margin-bottom:1.5rem;padding-bottom:0.25rem">${projImgs.map(src => `<img src="${src}" style="height:160px;border-radius:10px;object-fit:cover;flex-shrink:0;min-width:120px;max-width:260px">`).join('')}</div>` : ''}
         <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem">${proj.type} · ${proj.date}</div>
         <h2 style="font-family:var(--font-display);margin-bottom:1rem">${proj.title}</h2>
         <p style="color:var(--muted);line-height:1.7">${proj.description}</p>
@@ -1779,7 +1793,17 @@
       document.getElementById('single-post-tag').textContent = post.category;
       document.getElementById('single-post-date').textContent = post.date;
       const cover = document.getElementById('single-post-cover');
-      cover.innerHTML = post.image ? `<img src="${post.image}" alt="${post.title}">` : '';
+      const postImgs = parseImages(post.image);
+      if (postImgs.length > 1) {
+        cover.style.cssText = 'display:flex;gap:0.75rem;overflow-x:auto;height:auto;min-height:180px;border-radius:16px;margin-bottom:2.5rem;background:var(--surface2);padding:0.75rem';
+        cover.innerHTML = postImgs.map(src => `<img src="${src}" alt="${post.title}" style="height:210px;border-radius:10px;object-fit:cover;flex-shrink:0;">`).join('');
+      } else if (postImgs.length === 1) {
+        cover.style.cssText = '';
+        cover.innerHTML = `<img src="${postImgs[0]}" alt="${post.title}">`;
+      } else {
+        cover.style.display = 'none';
+        cover.innerHTML = '';
+      }
       document.getElementById('single-post-content').innerHTML = post.content
         .split('\n\n').map(p => `<p>${p}</p>`).join('');
       showPage('single-post');
@@ -1831,15 +1855,12 @@
         document.getElementById('post-content-input').value = post.content;
         document.getElementById('post-category-input').value = post.category;
         document.getElementById('post-status-input').value = post.status;
-        if (post.image) {
-          document.getElementById('post-img-preview').src = post.image;
-          document.getElementById('post-img-preview').style.display = 'block';
-        }
+        loadExistingImages('post-img-previews', post.image);
       } else {
         document.getElementById('editor-title-label').textContent = 'New Post';
         document.getElementById('post-title-input').value = '';
         document.getElementById('post-content-input').value = '';
-        document.getElementById('post-img-preview').style.display = 'none';
+        document.getElementById('post-img-previews').innerHTML = '';
       }
     }
 
@@ -1854,16 +1875,13 @@
         document.getElementById('proj-desc-input').value = proj.description;
         document.getElementById('proj-type-input').value = proj.type;
         document.getElementById('proj-link-input').value = proj.link || '';
-        if (proj.image) {
-          document.getElementById('proj-img-preview').src = proj.image;
-          document.getElementById('proj-img-preview').style.display = 'block';
-        }
+        loadExistingImages('proj-img-previews', proj.image);
       } else {
         document.getElementById('proj-editor-title-label').textContent = 'New Project';
         document.getElementById('proj-title-input').value = '';
         document.getElementById('proj-desc-input').value = '';
         document.getElementById('proj-link-input').value = '';
-        document.getElementById('proj-img-preview').style.display = 'none';
+        document.getElementById('proj-img-previews').innerHTML = '';
       }
     }
 
@@ -1881,8 +1899,8 @@
       const title = document.getElementById('post-title-input').value.trim();
       const content = document.getElementById('post-content-input').value.trim();
       if (!title || !content) { showToast('Please fill in title and content.'); return; }
-      const imgEl = document.getElementById('post-img-preview');
-      const image = imgEl.style.display !== 'none' ? imgEl.src : null;
+      const images = getImagesFromContainer('post-img-previews');
+      const image = images.length ? JSON.stringify(images) : null;
       const now = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
       const category = document.getElementById('post-category-input').value;
       const status = document.getElementById('post-status-input').value;
@@ -1904,8 +1922,8 @@
       const title = document.getElementById('proj-title-input').value.trim();
       const description = document.getElementById('proj-desc-input').value.trim();
       if (!title || !description) { showToast('Please fill in title and description.'); return; }
-      const imgEl = document.getElementById('proj-img-preview');
-      const image = imgEl.style.display !== 'none' ? imgEl.src : null;
+      const images = getImagesFromContainer('proj-img-previews');
+      const image = images.length ? JSON.stringify(images) : null;
       const now = new Date().getFullYear().toString();
       const type = document.getElementById('proj-type-input').value;
       const link = document.getElementById('proj-link-input').value;
@@ -1944,16 +1962,40 @@
       showToast('Project deleted.');
     }
 
-    function previewImage(input, previewId) {
-      const file = input.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = e => {
-        const img = document.getElementById(previewId);
-        img.src = e.target.result;
-        img.style.display = 'block';
-      };
-      reader.readAsDataURL(file);
+    function addImageToContainer(container, src) {
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'position:relative;display:inline-block';
+      const img = document.createElement('img');
+      img.src = src;
+      img.style.cssText = 'width:76px;height:58px;object-fit:cover;border-radius:8px;display:block';
+      const btn = document.createElement('button');
+      btn.textContent = '\xD7';
+      btn.type = 'button';
+      btn.style.cssText = 'position:absolute;top:-7px;right:-7px;background:var(--accent1);color:white;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:13px;line-height:20px;text-align:center;padding:0';
+      btn.onclick = () => wrapper.remove();
+      wrapper.appendChild(img);
+      wrapper.appendChild(btn);
+      container.appendChild(wrapper);
+    }
+
+    function loadExistingImages(containerId, imageField) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      parseImages(imageField).forEach(src => addImageToContainer(container, src));
+    }
+
+    function getImagesFromContainer(containerId) {
+      return Array.from(document.getElementById(containerId).querySelectorAll('img')).map(img => img.src);
+    }
+
+    function previewImages(input, containerId) {
+      const container = document.getElementById(containerId);
+      Array.from(input.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => addImageToContainer(container, e.target.result);
+        reader.readAsDataURL(file);
+      });
+      input.value = '';
     }
 
     function showToast(msg, type = '') {
